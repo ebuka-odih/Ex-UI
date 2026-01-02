@@ -1,0 +1,98 @@
+
+import React, { useState, useEffect, useMemo } from 'react';
+import { ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { LineChart, Line, ResponsiveContainer, YAxis, Tooltip, ReferenceDot } from 'recharts';
+import { PORTFOLIO_HISTORY } from '../constants';
+import { useMarket } from '../context/MarketContext';
+
+const PortfolioCard: React.FC = () => {
+  const { calculatePortfolioValue } = useMarket();
+  const buyingPower = 2851035.83;
+  const currentValue = calculatePortfolioValue(buyingPower);
+  const baseValue = 3011787.07;
+  
+  const [history, setHistory] = useState(() => 
+    PORTFOLIO_HISTORY.map(p => ({ ...p, value: 3011000 + (Math.random() * 500) }))
+  );
+
+  useEffect(() => {
+    const now = new Date();
+    const timeStr = `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+    setHistory(prev => [...prev.slice(-29), { time: timeStr, value: currentValue }]);
+  }, [currentValue]);
+
+  const dailyChange = currentValue - baseValue;
+  const dailyChangePercent = (dailyChange / baseValue) * 100;
+  const isPositive = dailyChange >= 0;
+
+  const yDomain = useMemo(() => {
+    const values = history.map(h => h.value);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const padding = (max - min) * 0.2 || 100;
+    return [min - padding, max + padding];
+  }, [history]);
+
+  return (
+    <div className="px-4 py-6">
+      <div className="mb-6">
+        <p className="text-xs font-bold text-green-500 tracking-widest uppercase mb-1">Investing</p>
+        <h2 className="text-4xl font-extrabold tracking-tight mb-2 tabular-nums">
+          ${currentValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </h2>
+        <div className="flex items-center gap-2">
+          <div className={`flex items-center font-bold text-sm ${isPositive ? 'text-green-500' : 'text-orange-500'}`}>
+            {isPositive ? <ArrowUpRight size={16} className="mr-0.5" /> : <ArrowDownRight size={16} className="mr-0.5" />}
+            <span className="tabular-nums">
+              ${Math.abs(dailyChange).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} 
+              ({isPositive ? '+' : ''}{dailyChangePercent.toFixed(2)}%)
+            </span>
+          </div>
+          <span className="text-zinc-500 text-sm font-medium">Today</span>
+        </div>
+      </div>
+
+      <div className="h-64 w-full relative group">
+        <div className="absolute top-0 right-0 flex items-center gap-1 bg-black/40 backdrop-blur-sm px-2 py-1 rounded-full z-10 border border-white/5">
+           <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+           <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-tighter">LIVE</span>
+        </div>
+        
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={history}>
+            <YAxis hide domain={yDomain} />
+            <Tooltip 
+              contentStyle={{ backgroundColor: '#18181b', border: 'none', borderRadius: '8px', color: '#fff' }}
+              itemStyle={{ color: '#22c55e' }}
+              cursor={{ stroke: '#27272a', strokeWidth: 1 }}
+              labelStyle={{ display: 'none' }}
+              formatter={(value: number) => [`$${value.toLocaleString()}`, 'Value']}
+            />
+            <Line 
+              type="monotone" 
+              dataKey="value" 
+              stroke={isPositive ? "#22c55e" : "#f97316"} 
+              strokeWidth={3}
+              dot={false}
+              isAnimationActive={false}
+            />
+            <ReferenceDot 
+              x={history[history.length - 1].time} 
+              y={currentValue} 
+              r={4} 
+              fill={isPositive ? "#22c55e" : "#f97316"} 
+              className="animate-pulse"
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className="mt-8 flex items-center justify-between border-t border-white/5 pt-6">
+        <span className="text-zinc-400 font-semibold">Buying power</span>
+        <span className="text-xl font-bold tabular-nums">${buyingPower.toLocaleString()}</span>
+      </div>
+    </div>
+  );
+};
+
+export default PortfolioCard;
